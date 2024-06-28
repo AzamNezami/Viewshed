@@ -1,0 +1,358 @@
+---
+title: "Viewshed Greenness Visibility Index"
+author: "Azam Nezami"
+date: "30/06/2024"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+
+### Library
+
+```{r}
+library(terra)
+library(sf)
+library(sfheaders)
+library(GVI)
+library(classInt)
+```
+
+
+## DSM Lankelz neighborhood
+
+```{r}
+DSM_file_Lankelz <- "C:/Users/35266/Documents/ArcGIS/Projects/Thesis_GreenSpace/MOS_S_LA.tif"
+
+# Read the raster file
+raster_DSM_data_Lankelz <- rast(DSM_file_Lankelz)
+
+# Assign LUREF Transverse Mercator CRS to the raster
+crs(raster_DSM_data_Lankelz) <- crs("EPSG:2169") 
+
+### Print information about the raster
+print(raster_DSM_data_Lankelz)
+plot(raster_DSM_data_Lankelz)
+```
+
+
+## DSM AlEsch and Brill neighborhoods
+
+```{r}
+DSM_file_AlEsch <- "C:/Users/35266/Documents/ArcGIS/Projects/Thesis_GreenSpace/MOS_S_ESCH.tif"
+
+# Read the raster file
+raster_DSM_data_AlESCH <- rast(DSM_file_AlEsch)
+
+# Assign LUREF Transverse Mercator CRS to the raster
+crs(raster_DSM_data_AlESCH) <- crs("EPSG:2169") 
+
+### Print information about the raster
+print(raster_DSM_data_AlESCH)
+plot(raster_DSM_data_AlESCH)
+```
+
+
+## DSM Universiteit and Bruch neighborhoods
+
+```{r}
+DSM_file <- "C:/Users/35266/Documents/ArcGIS/Projects/MyProject1/Mos_BeBr_DSM.tif"
+
+# Read the raster file
+raster_DSM_data <- rast(DSM_file)
+
+# Assign LUREF Transverse Mercator CRS to the raster
+crs(raster_DSM_data) <- crs("EPSG:2169") 
+
+### Print information about the raster
+print(raster_DSM_data)
+plot(raster_DSM_data)
+```
+
+
+### Resolution Equal(Universiteit and Bruch neighborhoods)
+
+```{r}
+res(raster_DSM_data)[1] == res(raster_DSM_data)[2] # This returns FALSE!!
+```
+
+```{r}
+ext(raster_DSM_data)
+```
+
+```{r}
+e <- round(ext(raster_DSM_data))
+raster_DSM_data2 <- terra::rast(crs = crs(raster_DSM_data),
+                   xmin =  e[1],
+                   xmax = e[2],
+                   ymin = e[3],
+                   ymax = e[4],
+                   resolution = 0.5)
+raster_DSM_data2[] <- terra::values(raster_DSM_data, mat = FALSE)
+```
+
+```{r}
+res(raster_DSM_data2)[1] == res(raster_DSM_data2)[2] # This returns TRUE
+```
+```{r}
+### Print information about the raster
+print(raster_DSM_data2)
+plot(raster_DSM_data2)
+```
+
+
+## DTM All neighborhoods
+
+```{r}
+DTM_file <- "C:/Users/35266/Documents/ArcGIS/Projects/Thesis_GreenSpace/MOS_T_ALL.tif"
+
+# Read the raster file
+raster_DTM_data_ALL <- rast(DTM_file)
+crs(raster_DTM_data_ALL) <- crs("EPSG:2169")
+
+# Print information about the raster
+print(raster_DTM_data_ALL)
+plot(raster_DTM_data_ALL)
+```
+
+
+## Greenerry All neighborhoods
+
+```{r}
+Greenery_file <- "C:/Users/35266/Documents/ArcGIS/Projects/Thesis_GreenSpace/Reclass_G_All.tif"
+
+# Read the raster file
+raster_Greenery_data_All <- rast(Greenery_file)
+crs(raster_Greenery_data_All) <- crs("EPSG:2169")
+
+# Print information about the raster
+print(raster_Greenery_data_All)
+plot(raster_Greenery_data_All)
+
+```
+
+
+#### Single Observer in Universiteit and Bruch neighborhoods
+
+```{r}
+
+# Single Point
+observer <- st_sf(sf_point(c(65550, 63035)), crs = st_crs(2169)) 
+
+# Print information about the observer
+print(observer)
+
+```
+
+
+#### Viewshed Analysis for a Single Observer in Universiteit and Bruch neighborhoods
+
+```{r}
+vs <- viewshed (observer = observer, dsm_rast = raster_DSM_data2 , dtm_rast = raster_DTM_data_ALL,
+               max_distance = 50, observer_height = 1.7, plot = TRUE)
+
+```
+
+
+#### Viewshed green visibil Index for a Single Observer in Universiteit and Bruch neighborhoods
+
+```{r}
+vgvi_from_sf(observer = observer,
+             dsm_rast = raster_DSM_data2, dtm_rast = raster_DTM_data_ALL, greenspace_rast = raster_Greenery_data_All,
+             max_distance = 50, observer_height = 1.7,
+             m = 0.5, b = 8, mode = "logit")$VGVI
+```
+
+
+## Calculate Greenery For Observers in Bruch neighborhood
+
+```{r}
+# Set the path to your CSV file Bruch
+csv_file_path <- "D:/Thesis/Green_View/Observers/Observer_Bruch.csv"
+
+# Read the CSV file into a data frame
+Bruch_Points <- read.csv(csv_file_path)
+
+# Specify the column names for X and Y coordinates
+x_column_Bruch <- "X"
+y_column_Bruch <- "Y"
+
+# Create a simple feature object
+observers_Bruch_11 <- st_as_sf(Bruch_Points, coords = c(x_column_Bruch, y_column_Bruch))
+
+# Set the CRS if needed (replace EPSG:XXXX with the actual EPSG code)
+observers_Bruch_11 <- st_set_crs(observers_Bruch_11, st_crs("EPSG:2169"))
+
+```
+
+
+## Viewshed green visibil Index for  Observers in Bruch neighborhood
+
+```{r}
+Result_Bruch <- vgvi_from_sf (observer = observers_Bruch_11,
+             dsm_rast = raster_DSM_data2, dtm_rast = raster_DTM_data_ALL, greenspace_rast = raster_Greenery_data_All,
+             max_distance = 50, observer_height = 1.7,
+             m = 0.5, b = 8, mode = "logit")$VGVI
+print(Result_Bruch)
+```
+
+```{r}
+write.csv (Result_Bruch, file = "C:/Users/35266/Desktop/Green_Bruch")
+```
+
+
+## Calculate Greenery For Observers in Universiteit neighborhood
+
+```{r}
+# Set the path to your CSV file Belval
+csv_file_path <- "D:/Thesis/Green_View/Observers/Observer_Universiteit.csv"
+
+# Read the CSV file into a data frame
+Universiteit_Points <- read.csv(csv_file_path)
+
+# Specify the column names for X and Y coordinates
+x_column_Universiteit <- "X"
+y_column_Universiteit <- "Y"
+
+# Create a simple feature object
+observers_Universiteit_4 <- st_as_sf(Universiteit_Points, coords = c(x_column_Universiteit, y_column_Universiteit))
+
+# Set the CRS if needed (replace EPSG:XXXX with the actual EPSG code)
+observers_Universiteit_4 <- st_set_crs(observers_Universiteit_4, st_crs("EPSG:2169"))
+
+```
+
+
+## Viewshed green visibil Index for Observers in Universiteit neighborhood
+
+```{r}
+Result_Nuiversiteit <- vgvi_from_sf (observer = observers_Universiteit_4,
+             dsm_rast = raster_DSM_data2, dtm_rast = raster_DTM_data_ALL, greenspace_rast = raster_Greenery_data_All,
+             max_distance = 50, observer_height = 1.7,
+             m = 0.5, b = 8, mode = "logit")$VGVI
+print(Result_Nuiversiteit)
+```
+
+```{r}
+write.csv (Result_Nuiversiteit, file = "C:/Users/35266/Desktop/Green_Universiteit")
+```
+
+
+## Calculate Greenery For Observers in Lankelz neighborhood
+
+```{r}
+# Set the path to your CSV file Lankelz
+csv_file_path <- "D:/Thesis/Green_View/Observers/Observer_Lankelz.csv"
+
+# Read the CSV file into a data frame
+Lankelz_Points <- read.csv(csv_file_path)
+
+# Specify the column names for X and Y coordinates
+x_column_Lankelz <- "X"
+y_column_Lankelz <- "Y"
+
+# Create a simple feature object
+observers_Lankelz_15 <- st_as_sf(Lankelz_Points, coords = c(x_column_Lankelz, y_column_Lankelz))
+
+# Set the CRS if needed (replace EPSG:XXXX with the actual EPSG code)
+observers_Lankelz_15 <- st_set_crs(observers_Lankelz_15, st_crs("EPSG:2169"))
+
+```
+
+
+## Viewshed green visibil Index for  Observers in Lankelz neighborhood
+
+```{r}
+Result_Lankelz <- vgvi_from_sf (observer = observers_Lankelz_15,
+             dsm_rast = raster_DSM_data_Lankelz, dtm_rast = raster_DTM_data_ALL, greenspace_rast = raster_Greenery_data_All,
+             max_distance = 50, observer_height = 1.7,
+             m = 0.5, b = 8, mode = "logit")$VGVI
+print(Result_Lankelz)
+```
+
+```{r}
+write.csv (Result_Lankelz, file = "C:/Users/35266/Desktop/Green_Lankelz")
+```
+
+
+## Calculate Greenery For Observers in Al_Esch neighborhood
+
+```{r}
+# Set the path to your CSV file Al_Esch
+csv_file_path <- "D:/Thesis/Green_View/Observers/Observer_Esch.csv"
+
+# Read the CSV file into a data frame
+Al_Esch_Points <- read.csv(csv_file_path)
+
+# Specify the column names for X and Y coordinates
+x_column_Esch <- "X"
+y_column_Esch <- "Y"
+
+# Create a simple feature object
+observers_Esch_18 <- st_as_sf(Al_Esch_Points, coords = c(x_column_Esch, y_column_Esch))
+
+# Set the CRS if needed (replace EPSG:XXXX with the actual EPSG code)
+observers_Esch_18 <- st_set_crs(observers_Esch_18, st_crs("EPSG:2169"))
+
+```
+
+
+## Viewshed green visibil Index for  Observers in Al_Esch neighborhood
+
+```{r}
+Result_Esch <- vgvi_from_sf (observer = observers_Esch_18,
+             dsm_rast = raster_DSM_data_AlESCH, dtm_rast = raster_DTM_data_ALL, greenspace_rast = raster_Greenery_data_All,
+             max_distance = 50, observer_height = 1.7,
+             m = 0.5, b = 8, mode = "logit")$VGVI
+print(Result_Esch)
+```
+
+```{r}
+write.csv (Result_Esch, file = "C:/Users/35266/Desktop/Green_Esch")
+```
+
+
+## Calculate Greenery For Observers in Brill neighborhood
+
+```{r}
+# Set the path to your CSV file Brill
+csv_file_path <- "D:/Thesis/Green_View/Observers/Obeserver_Brill.csv"
+
+# Read the CSV file into a data frame
+Brill_Points <- read.csv(csv_file_path)
+
+# Specify the column names for X and Y coordinates
+x_column_Brill <- "X"
+y_column_Brill <- "Y"
+
+# Create a simple feature object
+observers_Brill_13 <- st_as_sf(Brill_Points, coords = c(x_column_Brill, y_column_Brill))
+
+# Set the CRS if needed (replace EPSG:XXXX with the actual EPSG code)
+observers_Brill_13 <- st_set_crs(observers_Brill_13, st_crs("EPSG:2169"))
+
+```
+
+
+## Viewshed green visibil Index for  Observers in Brill neighborhood
+
+```{r}
+Result_Brill <- vgvi_from_sf (observer = observers_Brill_13,
+             dsm_rast = raster_DSM_data_AlESCH, dtm_rast = raster_DTM_data_ALL, greenspace_rast = raster_Greenery_data_All,
+             max_distance = 50, observer_height = 1.7,
+             m = 0.5, b = 8, mode = "logit")$VGVI
+print(Result_Brill)
+```
+
+```{r}
+write.csv (Result_Brill, file = "C:/Users/35266/Desktop/Green_Brill")
+```
+
+
+
+
