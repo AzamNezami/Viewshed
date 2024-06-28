@@ -1,0 +1,324 @@
+---
+title: "Linear Regression betbween Green Visibility in streets and Urban Form Variables"
+author: "Azam Nezami"
+date: "2024-06-30"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+
+### Library
+
+```{r}
+library(MASS)
+library(fastDummies)
+```
+
+
+### Read File
+
+```{r}
+file <- "D:/Thesis/Green_View/Observers/Final_File_Obsevers.csv"
+Data <- read.csv(file , header = TRUE)
+head(Data)
+```
+
+
+#### Select Variables
+
+```{r}
+table(Data[, 3])
+table(Data[, 4])
+table(Data[, 7])
+table(Data[, 8])
+table(Data[, 9])
+table(Data[, 10])
+table(Data[, 11])
+table(Data[, 13])
+table(Data[, 14])
+table(Data[, 15])
+Data2 <- Data[, c(3, 11, 12, 13, 14, 15)]
+head(Data2)
+```
+
+
+##### Edit Land.use 
+
+```{r}
+colnames(Data2)[3] <- "Land.use"
+table(Data2[, 3])
+L <- which(Data2[, 3] == "-")
+Data2[L, 3] <- "_"
+L <- which(Data2[, 3] == "_")
+Data2[L, 3] <- "Total"
+L <- which(Data2[, 3] == "parking")
+Data2[L, 3] <- "Parking"
+L <- which(Data2[, 3] == "Public Facilites")
+Data2[L, 3] <- "Public Facilities"
+table(Data2$Land.use)
+```
+
+
+##### Edit Building Age
+
+```{r}
+table(Data2[, 4])
+L <- which(Data2$AgeBuilding == 19954)
+Data2[L, 4] <- 1954
+L <- which(Data2$AgeBuilding == 2918)
+Data2[L, 4] <- 2018
+table(Data2$AgeBuilding)
+L <- which(Data2$AgeBuilding == 0)
+Data2[L, 4] <- 2023
+
+x <- c()
+AgeBuilding <- Data2$AgeBuilding
+for(i in 1:length(AgeBuilding)){
+  
+  L <- which(AgeBuilding <= 1939)
+  if(length(L) != 0) x[L] <- 1
+  
+  L <- which(1940 <= AgeBuilding & AgeBuilding <= 1954)
+  if(length(L) != 0) x[L] <- 2
+  
+  L <- which(1955 <= AgeBuilding & AgeBuilding <= 1966)
+  if(length(L) != 0) x[L] <- 3
+  
+  L <- which(1967 <= AgeBuilding & AgeBuilding <= 1990)
+  if(length(L) != 0) x[L] <- 4
+  
+  L <- which(1991 <= AgeBuilding & AgeBuilding <= 2018)
+  if(length(L) != 0) x[L] <- 5 
+  
+  L <- which(AgeBuilding == 2023)
+  if(length(L) != 0) x[L] <- 6
+  
+}
+Data2[, 4] <- x
+
+```
+
+
+##### Edit Building Height
+
+```{r}
+
+table(Data2[, 6])
+L1 <- which(Data2[, 6] == 0)
+L2 <- which(1 <= Data2[, 6] & Data2[, 6] < 2)
+L3 <- which(2 <= Data2[, 6] & Data2[, 6] < 3)
+L4 <- which(3 <= Data2[, 6] & Data2[, 6] < 4)
+L5 <- which(4 <= Data2[, 6] & Data2[, 6] < 5)
+L6 <- which(5 <= Data2[, 6] & Data2[, 6] < 6)
+L7 <- which(6 <= Data2[, 6])
+
+Data2[L1, 6] <- 0
+Data2[L2, 6] <- 1
+Data2[L3, 6] <- 2
+Data2[L4, 6] <- 3
+Data2[L5, 6] <- 4
+Data2[L6, 6] <- 5
+Data2[L7, 6] <- 6
+
+```
+
+
+##### Edit Street Width
+
+```{r}
+table(Data2[, 5])
+L1 <- which(Data2[, 5] == 4)
+L2 <- which(Data2[, 5] == 5.5)
+L3 <- which(Data2[, 5] == 7)
+L4 <- which(Data2[, 5] == 8.75)
+L5 <- which(Data2[, 5] == 44)
+
+Data2[L1, 5] <- 1
+Data2[L2, 5] <- 2
+Data2[L3, 5] <- 3
+Data2[L4, 5] <- 4
+Data2[L5, 5] <- 1
+```
+
+
+### Descriptive Statistics
+
+```{r}
+head(Data2)
+tapply(Data2$Greenery, Data2$Neighborhood, mean)
+tapply(Data2$Greenery, Data2$Neighborhood, sd)
+
+tapply(Data2$Greenery, Data2$Land.use, mean)
+tapply(Data2$Greenery, Data2$Land.use, sd)
+
+tapply(Data2$Greenery, Data2$AgeBuilding, mean)
+tapply(Data2$Greenery, Data2$AgeBuilding, sd)
+
+tapply(Data2$Greenery, Data2$WidthRoad, mean)
+tapply(Data2$Greenery, Data2$WidthRoad, sd)
+
+tapply(Data2$Greenery, Data2$Floor, mean)
+tapply(Data2$Greenery, Data2$Floor, sd)
+
+dim(Data2)
+L <- which(Data2[, 2] <= 0.32)
+Data2 <- Data2[L, ]
+length(L)
+```
+
+
+## Simple Linear Regression
+### Model 1
+#### Landuse
+
+```{r}
+Data3 <- Data2[, c(2, 3)]
+table(Data3$Land.use)
+Data3 <- dummy_cols(Data3, select_columns = "Land.use")
+head(Data3)
+Data4 <- Data3[, c(1, 3:7, 9, 10)]
+head(Data4)
+
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+Data4[, 1] <- log(Data4[, 1] + 0.01)
+hist(Data4[, 1], col = 3)
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+```
+
+### Model 2
+#### Building Age
+
+```{r}
+Data3 <- Data2[, c(2, 4)]
+table(Data3$AgeBuilding)
+Data3 <- dummy_cols(Data3, select_columns = "AgeBuilding")
+head(Data3)
+Data4 <- Data3[, c(1, 4:8)]
+head(Data4)
+
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+Data4[, 1] <- log(Data4[, 1] + 0.01)
+hist(Data4[, 1], col = 3)
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+```
+
+### Model 3
+#### Building Height
+
+```{r}
+Data3 <- Data2[, c(2, 6)]
+table(Data3$Floor)
+Data3 <- dummy_cols(Data3, select_columns = "Floor")
+head(Data3)
+Data4 <- Data3[, c(1, 4:9)]
+head(Data4)
+
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+Data4[, 1] <- log(Data4[, 1] + 0.01)
+hist(Data4[, 1], col = 3)
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+```
+
+### Model 4
+#### Street Withd
+
+```{r}
+Data3 <- Data2[, c(2, 5)]
+table(Data3$WidthRoad)
+Data3 <- dummy_cols(Data3, select_columns = "WidthRoad")
+head(Data3)
+Data4 <- Data3[, c(1, 4:6)]
+head(Data4)
+
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+Data4[, 1] <- log(Data4[, 1] + 0.01)
+hist(Data4[, 1], col = 3)
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+```
+
+
+## Multipul Linear Regression
+### Model 5
+#### All Variables
+
+```{r}
+Data3 <- dummy_cols(Data2, select_columns = c("Land.use", "AgeBuilding", "WidthRoad", "Floor"))
+head(Data3)
+Data4 <- Data3[, c(2, 7:11, 13:14, 16:20, 22:24, 26:31)]
+head(Data4)
+
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+
+Data4[, 1] <- log(Data4[, 1] + 0.01)
+hist(Data4[, 1], col = 3)
+Fit <- lm(Greenery ~ ., data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+```
+
+
+### Model 6
+#### StepAIC All Variables
+
+```{r}
+Edit <- stepAIC(Fit, trace = 0)
+Fit <- lm(formula = Greenery ~ Land.use_Commercial + Land.use_Industrial + 
+            Land.use_Mixed + `Land.use_Public Facilities` + `Land.use_Social, Cultural` + 
+            AgeBuilding_2 + AgeBuilding_3 + AgeBuilding_4 + AgeBuilding_5 + 
+            WidthRoad_4 + Floor_1 + Floor_2 + Floor_3 + Floor_4 + Floor_5 + 
+            Floor_6, data = Data4)
+summary(Fit)
+layout(matrix(1:4, 2, 2))
+plot(Fit)
+hist(resid(Fit), col = 3)
+```
+
